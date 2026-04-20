@@ -52,6 +52,12 @@ const consultInputShape = {
     .describe(
       "Execution engine. `api` uses OpenAI/other providers. `browser` automates the ChatGPT web UI (supports attachments and ChatGPT-only model labels).",
     ),
+  chatgptUrl: z
+    .string()
+    .optional()
+    .describe(
+      "Browser-only: explicit ChatGPT conversation/project/folder URL to target for this run.",
+    ),
   browserModelLabel: z
     .string()
     .optional()
@@ -120,6 +126,8 @@ const consultOutputShape = {
   sessionId: z.string(),
   status: z.string(),
   output: z.string(),
+  conversationUrl: z.string().optional(),
+  conversationId: z.string().optional(),
   models: z.array(consultModelSummaryShape).optional(),
 } satisfies z.ZodRawShape;
 
@@ -163,6 +171,7 @@ export function buildConsultBrowserConfig({
   env,
   runModel,
   inputModel,
+  chatgptUrl,
   browserModelLabel,
   browserThinkingTime,
   browserKeepBrowser,
@@ -171,6 +180,7 @@ export function buildConsultBrowserConfig({
   env: Record<string, string | undefined>;
   runModel: string;
   inputModel?: string;
+  chatgptUrl?: string;
   browserModelLabel?: string;
   browserThinkingTime?: "light" | "standard" | "extended" | "heavy";
   browserKeepBrowser?: boolean;
@@ -183,7 +193,7 @@ export function buildConsultBrowserConfig({
   const desiredModelLabel = isChatGptModel
     ? mapModelToBrowserLabel(runModel)
     : resolveBrowserModelLabel(preferredLabel, runModel);
-  const configuredUrl = configuredBrowser.chatgptUrl ?? configuredBrowser.url ?? CHATGPT_URL;
+  const configuredUrl = chatgptUrl ?? configuredBrowser.chatgptUrl ?? configuredBrowser.url ?? CHATGPT_URL;
   const manualLogin = hasProfileDir ? true : (configuredBrowser.manualLogin ?? false);
 
   return {
@@ -222,6 +232,7 @@ export function registerConsultTool(server: McpServer): void {
         model,
         models,
         engine,
+        chatgptUrl,
         search,
         browserModelLabel,
         browserAttachments,
@@ -248,6 +259,7 @@ export function registerConsultTool(server: McpServer): void {
       const resolvedRemote = resolveRemoteServiceConfig({ userConfig, env: process.env });
       const browserGuard = ensureBrowserAvailable(resolvedEngine, {
         remoteHost: resolvedRemote.host,
+        browserConfig: userConfig.browser,
       });
       if (resolvedEngine === "browser" && browserGuard) {
         return {
@@ -281,6 +293,7 @@ export function registerConsultTool(server: McpServer): void {
           env: process.env,
           runModel: runOptions.model,
           inputModel: model,
+          chatgptUrl,
           browserModelLabel,
           browserThinkingTime,
           browserKeepBrowser,
@@ -362,12 +375,16 @@ export function registerConsultTool(server: McpServer): void {
         const summary = `Session ${sessionMeta.id} (${finalMeta.status})`;
         const logTail = await readSessionLogTail(sessionMeta.id, 4000);
         const modelsSummary = summarizeModelRunsForConsult(finalMeta.models);
+        const conversationUrl = finalMeta.browser?.runtime?.tabUrl;
+        const conversationId = finalMeta.browser?.runtime?.conversationId;
         return {
           content: textContent([summary, logTail || "(log empty)"].join("\n").trim()),
           structuredContent: {
             sessionId: sessionMeta.id,
             status: finalMeta.status,
             output: logTail ?? "",
+            conversationUrl,
+            conversationId,
             models: modelsSummary,
           },
         };

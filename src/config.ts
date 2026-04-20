@@ -19,6 +19,8 @@ export interface BrowserConfigDefaults {
   chromeCookiePath?: string | null;
   chatgptUrl?: string | null;
   url?: string;
+  /** Attach browser automation to an existing Chrome DevTools endpoint (host:port). */
+  remoteChrome?: { host: string; port: number } | null;
   /** Delegate browser automation to a remote `oracle serve` instance (host:port). */
   remoteHost?: string | null;
   /** Access token clients must provide to the remote `oracle serve` instance. */

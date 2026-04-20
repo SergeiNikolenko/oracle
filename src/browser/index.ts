@@ -77,6 +77,18 @@ export function shouldPreserveBrowserOnErrorForTest(error: unknown, headless: bo
   return shouldPreserveBrowserOnError(error, headless);
 }
 
+export function shouldFallbackFromRemoteChromeForTest(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("econnrefused") ||
+    message.includes("ehostunreach") ||
+    message.includes("etimedout") ||
+    message.includes("couldn't connect to server") ||
+    message.includes("failed to fetch browser websocket url")
+  );
+}
+
 export async function runBrowserMode(options: BrowserRunOptions): Promise<BrowserRunResult> {
   const promptText = options.prompt?.trim();
   if (!promptText) {
@@ -149,7 +161,17 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       );
     }
 
-    return runRemoteBrowserMode(promptText, attachments, config, logger, options);
+    try {
+      return await runRemoteBrowserMode(promptText, attachments, config, logger, options);
+    } catch (error) {
+      if (!shouldFallbackFromRemoteChromeForTest(error)) {
+        throw error;
+      }
+      const target = `${config.remoteChrome.host}:${config.remoteChrome.port}`;
+      const message = error instanceof Error ? error.message : String(error);
+      logger(`Remote Chrome ${target} unavailable (${message}); falling back to local Chrome.`);
+      config = { ...config, remoteChrome: null };
+    }
   }
 
   const manualLogin = Boolean(config.manualLogin);
@@ -935,6 +957,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       userDataDir,
       chromeTargetId: lastTargetId,
       tabUrl: lastUrl,
+      conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
       controllerPid: process.pid,
     };
   } catch (error) {
@@ -951,6 +974,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
         userDataDir,
         chromeTargetId: lastTargetId,
         tabUrl: lastUrl,
+        conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
         controllerPid: process.pid,
       };
       const reuseProfileHint =
@@ -1284,6 +1308,7 @@ async function runRemoteBrowserMode(
         chromeHost: host,
         chromeTargetId: remoteTargetId ?? undefined,
         tabUrl: lastUrl,
+        conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
         controllerPid: process.pid,
       });
     } catch (error) {
@@ -1721,6 +1746,7 @@ async function runRemoteBrowserMode(
       userDataDir: undefined,
       chromeTargetId: remoteTargetId ?? undefined,
       tabUrl: lastUrl,
+      conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
       controllerPid: process.pid,
     };
   } catch (error) {
@@ -1744,6 +1770,7 @@ async function runRemoteBrowserMode(
         chromePort: port,
         chromeTargetId: remoteTargetId ?? undefined,
         tabUrl: lastUrl,
+        conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
         controllerPid: process.pid,
       },
     });

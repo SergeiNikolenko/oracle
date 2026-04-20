@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { shouldPreserveBrowserOnErrorForTest } from "../../src/browser/index.js";
+import {
+  shouldFallbackFromRemoteChromeForTest,
+  shouldPreserveBrowserOnErrorForTest,
+} from "../../src/browser/index.js";
 import { BrowserAutomationError } from "../../src/oracle/errors.js";
 
 describe("shouldPreserveBrowserOnErrorForTest", () => {
@@ -22,5 +25,17 @@ describe("shouldPreserveBrowserOnErrorForTest", () => {
       stage: "execute-browser",
     });
     expect(shouldPreserveBrowserOnErrorForTest(error, false)).toBe(false);
+  });
+});
+
+describe("shouldFallbackFromRemoteChromeForTest", () => {
+  test("falls back for refused remote Chrome connections", () => {
+    expect(shouldFallbackFromRemoteChromeForTest(new Error("connect ECONNREFUSED 127.0.0.1:9334"))).toBe(
+      true,
+    );
+  });
+
+  test("does not fall back for unrelated browser errors", () => {
+    expect(shouldFallbackFromRemoteChromeForTest(new Error("model selection failed"))).toBe(false);
   });
 });

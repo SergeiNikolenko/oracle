@@ -1,6 +1,6 @@
 import type { RunOracleOptions } from "../oracle.js";
 import type { EngineMode } from "../cli/engine.js";
-import type { UserConfig } from "../config.js";
+import type { BrowserConfigDefaults, UserConfig } from "../config.js";
 import { resolveRunOptionsFromConfig } from "../cli/runOptions.js";
 import { Launcher } from "chrome-launcher";
 
@@ -56,13 +56,20 @@ export function mapConsultToRunOptions({
 
 export function ensureBrowserAvailable(
   engine: EngineMode,
-  options?: { remoteHost?: string | null },
+  options?: { remoteHost?: string | null; browserConfig?: BrowserConfigDefaults | null },
 ): string | null {
   if (engine !== "browser") {
     return null;
   }
   const remoteHost = options?.remoteHost?.trim() || process.env.ORACLE_REMOTE_HOST?.trim();
   if (remoteHost) {
+    return null;
+  }
+  const configuredChromePath = options?.browserConfig?.chromePath?.trim();
+  if (configuredChromePath) {
+    return null;
+  }
+  if (options?.browserConfig?.remoteChrome) {
     return null;
   }
   if (process.env.CHROME_PATH) {

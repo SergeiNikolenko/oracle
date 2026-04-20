@@ -23,6 +23,7 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
     chromeCookiePath: null,
     chatgptUrl: "https://chatgpt.com/", // root is fine; folder URLs also work
     url: null, // alias for chatgptUrl (kept for back-compat)
+    remoteChrome: { host: "127.0.0.1", port: 9334 }, // attach to an existing local Chrome DevTools endpoint
     // Remote browser bridge (preferred place to store remote host settings)
     remoteHost: "127.0.0.1:9473",
     remoteToken: "…", // written by `oracle bridge client` (kept private; not printed by default)
@@ -78,6 +79,7 @@ CLI flags → `config.json` → environment → built-in defaults.
 - `sessionRetentionHours` controls the default value for `--retain-hours`. When unset, `ORACLE_RETAIN_HOURS` (if present) becomes the fallback, and the CLI flag still wins over both.
 - `ORACLE_MAX_FILE_SIZE_BYTES` overrides `maxFileSizeBytes` when set. Oracle validates it as a positive integer number of bytes before reading any `--file` inputs.
 - `browser.chatgptUrl` accepts either the root ChatGPT URL (`https://chatgpt.com/`) or a folder/workspace URL (e.g., `https://chatgpt.com/g/.../project`); `browser.url` remains as a legacy alias.
+- `browser.remoteChrome` lets Oracle CLI/MCP attach to an already running Chrome DevTools endpoint (for example a hidden background Chrome on `127.0.0.1:9334`).
 - Browser automation defaults can be set under `browser.*`, including `browser.manualLogin`, `browser.manualLoginProfileDir`, and `browser.thinkingTime` (CLI override: `--browser-thinking-time`). On Windows, `browser.manualLogin` defaults to `true` when omitted.
 
 If the config is missing or invalid, Oracle falls back to defaults and prints a warning for parse errors.

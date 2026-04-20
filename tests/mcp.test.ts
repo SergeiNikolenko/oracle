@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapConsultToRunOptions } from "../src/mcp/utils.js";
+import { ensureBrowserAvailable, mapConsultToRunOptions } from "../src/mcp/utils.js";
 
 describe("mcp utils", () => {
   it("maps api defaults", () => {
@@ -22,5 +22,21 @@ describe("mcp utils", () => {
     });
     expect(resolvedEngine).toBe("browser");
     expect(runOptions.model).toBe("gpt-5.2");
+  });
+
+  it("treats configured chromePath as browser-available", () => {
+    expect(
+      ensureBrowserAvailable("browser", {
+        browserConfig: { chromePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" },
+      }),
+    ).toBeNull();
+  });
+
+  it("treats configured remoteChrome as browser-available", () => {
+    expect(
+      ensureBrowserAvailable("browser", {
+        browserConfig: { remoteChrome: { host: "127.0.0.1", port: 9334 } },
+      }),
+    ).toBeNull();
   });
 });

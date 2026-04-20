@@ -40,6 +40,7 @@ describe("summarizeModelRunsForConsult", () => {
       userConfig: {
         browser: {
           chatgptUrl: "https://chatgpt.com/g/g-p-foo/project",
+          remoteChrome: { host: "127.0.0.1", port: 9334 },
           debugPort: 9224,
           keepBrowser: true,
           manualLogin: true,
@@ -55,6 +56,7 @@ describe("summarizeModelRunsForConsult", () => {
     expect(config).toMatchObject({
       chatgptUrl: "https://chatgpt.com/g/g-p-foo/project",
       url: "https://chatgpt.com/g/g-p-foo/project",
+      remoteChrome: { host: "127.0.0.1", port: 9334 },
       debugPort: 9224,
       keepBrowser: true,
       manualLogin: true,
@@ -92,6 +94,25 @@ describe("summarizeModelRunsForConsult", () => {
       thinkingTime: "heavy",
       desiredModel: "Claude Sonnet",
       cookieSync: false,
+    });
+  });
+
+  test("lets explicit chatgptUrl override config defaults", () => {
+    const config = buildConsultBrowserConfig({
+      userConfig: {
+        browser: {
+          chatgptUrl: "https://chatgpt.com/g/g-p-foo/project",
+        },
+      },
+      env: {},
+      runModel: "gpt-5.4-pro",
+      inputModel: "gpt-5.4-pro",
+      chatgptUrl: "https://chatgpt.com/c/abc123",
+    });
+
+    expect(config).toMatchObject({
+      chatgptUrl: "https://chatgpt.com/c/abc123",
+      url: "https://chatgpt.com/c/abc123",
     });
   });
 });

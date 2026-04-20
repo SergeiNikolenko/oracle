@@ -90,6 +90,7 @@ export interface BrowserRunResult {
   userDataDir?: string;
   chromeTargetId?: string;
   tabUrl?: string;
+  conversationId?: string;
   controllerPid?: number;
 }
 
