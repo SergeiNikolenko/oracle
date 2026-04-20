@@ -3,6 +3,7 @@ export {
   navigateToPromptReadyWithFallback,
   ensureNotBlocked,
   ensureLoggedIn,
+  probeChatGPTLogin,
   ensurePromptReady,
   installJavaScriptDialogAutoDismissal,
 } from "./actions/navigation.js";

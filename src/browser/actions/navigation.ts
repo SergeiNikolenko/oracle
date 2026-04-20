@@ -190,12 +190,7 @@ export async function ensureLoggedIn(
 ) {
   // Learned: ChatGPT can render the UI (project view) while auth silently failed.
   // A backend-api probe plus DOM login CTA check catches both cases.
-  const outcome = await Runtime.evaluate({
-    expression: buildLoginProbeExpression(LOGIN_CHECK_TIMEOUT_MS),
-    awaitPromise: true,
-    returnByValue: true,
-  });
-  const probe = normalizeLoginProbe(outcome.result?.value);
+  const probe = await probeChatGPTLogin(Runtime);
   if (probe.ok) {
     logger(
       `Login check passed (status=${probe.status}, domLoginCta=${Boolean(probe.domLoginCta)})`,
@@ -239,6 +234,17 @@ export async function ensureLoggedIn(
       : "ChatGPT login appears missing; open chatgpt.com in Chrome to refresh the session or provide inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).";
 
   throw new Error(`ChatGPT session not detected.${domLabel} ${cookieHint}`);
+}
+
+export async function probeChatGPTLogin(
+  Runtime: ChromeClient["Runtime"],
+): Promise<LoginProbeResult> {
+  const outcome = await Runtime.evaluate({
+    expression: buildLoginProbeExpression(LOGIN_CHECK_TIMEOUT_MS),
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  return normalizeLoginProbe(outcome.result?.value);
 }
 
 async function attemptWelcomeBackLogin(

@@ -195,12 +195,14 @@ export function buildConsultBrowserConfig({
     : resolveBrowserModelLabel(preferredLabel, runModel);
   const configuredUrl = chatgptUrl ?? configuredBrowser.chatgptUrl ?? configuredBrowser.url ?? CHATGPT_URL;
   const manualLogin = hasProfileDir ? true : (configuredBrowser.manualLogin ?? false);
+  const cookieSync =
+    configuredBrowser.cookieSync ?? (manualLogin ? Boolean(configuredBrowser.manualLoginCookieSync) : true);
 
   return {
     ...configuredBrowser,
     url: configuredUrl,
     chatgptUrl: configuredUrl,
-    cookieSync: !manualLogin,
+    cookieSync,
     headless: configuredBrowser.headless ?? false,
     hideWindow: configuredBrowser.hideWindow ?? false,
     keepBrowser: browserKeepBrowser ?? configuredBrowser.keepBrowser ?? false,

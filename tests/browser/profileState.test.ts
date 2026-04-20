@@ -24,6 +24,26 @@ describe("profileState", () => {
     }
   });
 
+  test("recovers DevTools port from chrome-err.log when the port file is missing", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "oracle-profile-"));
+    try {
+      await writeFile(
+        path.join(dir, "chrome-err.log"),
+        [
+          "some noise",
+          "DevTools listening on ws://127.0.0.1:53718/devtools/browser/older",
+          "DevTools listening on ws://127.0.0.1:49982/devtools/browser/current",
+        ].join("\n"),
+        "utf8",
+      );
+      await expect(profileState.readDevToolsPort(dir)).resolves.toBe(49982);
+      expect(existsSync(path.join(dir, "DevToolsActivePort"))).toBe(true);
+      expect(existsSync(path.join(dir, "Default", "DevToolsActivePort"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   test("cleans DevToolsActivePort, but only removes locks when oracle pid is dead", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "oracle-profile-"));
     const lockFiles = [

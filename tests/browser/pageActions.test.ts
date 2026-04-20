@@ -9,6 +9,7 @@ import {
   ensurePromptReady,
   ensureNotBlocked,
   ensureLoggedIn,
+  probeChatGPTLogin,
 } from "../../src/browser/pageActions.js";
 import * as attachments from "../../src/browser/actions/attachments.js";
 import * as attachmentDataTransfer from "../../src/browser/actions/attachmentDataTransfer.js";
@@ -185,6 +186,27 @@ describe("ensureNotBlocked", () => {
 });
 
 describe("ensureLoggedIn", () => {
+  test("returns normalized login probe state", async () => {
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({
+        result: {
+          value: {
+            ok: true,
+            status: "200",
+            pageUrl: "https://chatgpt.com/c/abc",
+            domLoginCta: false,
+          },
+        },
+      }),
+    } as unknown as ChromeClient["Runtime"];
+    await expect(probeChatGPTLogin(runtime)).resolves.toMatchObject({
+      ok: true,
+      status: 200,
+      pageUrl: "https://chatgpt.com/c/abc",
+      domLoginCta: false,
+    });
+  });
+
   test("logs success when session is present", async () => {
     const runtime = {
       evaluate: vi.fn().mockResolvedValue({

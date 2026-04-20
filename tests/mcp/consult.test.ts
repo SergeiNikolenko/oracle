@@ -43,7 +43,9 @@ describe("summarizeModelRunsForConsult", () => {
           remoteChrome: { host: "127.0.0.1", port: 9334 },
           debugPort: 9224,
           keepBrowser: true,
+          cookieSync: true,
           manualLogin: true,
+          manualLoginCookieSync: true,
           manualLoginProfileDir: "/tmp/oracle-profile",
           thinkingTime: "extended",
         },
@@ -63,7 +65,7 @@ describe("summarizeModelRunsForConsult", () => {
       manualLoginProfileDir: "/tmp/oracle-profile",
       thinkingTime: "extended",
       desiredModel: "GPT-5.2",
-      cookieSync: false,
+      cookieSync: true,
     });
   });
 
@@ -72,8 +74,10 @@ describe("summarizeModelRunsForConsult", () => {
       userConfig: {
         browser: {
           keepBrowser: false,
+          cookieSync: true,
           manualLogin: false,
           manualLoginProfileDir: "/tmp/config-profile",
+          manualLoginCookieSync: true,
           thinkingTime: "light",
         },
       },
@@ -93,7 +97,7 @@ describe("summarizeModelRunsForConsult", () => {
       manualLoginProfileDir: "/tmp/env-profile",
       thinkingTime: "heavy",
       desiredModel: "Claude Sonnet",
-      cookieSync: false,
+      cookieSync: true,
     });
   });
 

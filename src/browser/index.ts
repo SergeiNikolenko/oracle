@@ -16,6 +16,7 @@ import {
   hideChromeWindow,
   connectToRemoteChrome,
   closeRemoteChromeTarget,
+  connectToExistingChatGPTTarget,
   connectWithNewTab,
   closeTab,
 } from "./chromeLifecycle.js";
@@ -25,6 +26,7 @@ import {
   navigateToPromptReadyWithFallback,
   ensureNotBlocked,
   ensureLoggedIn,
+  probeChatGPTLogin,
   ensurePromptReady,
   installJavaScriptDialogAutoDismissal,
   ensureModelSelection,
@@ -169,8 +171,11 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       }
       const target = `${config.remoteChrome.host}:${config.remoteChrome.port}`;
       const message = error instanceof Error ? error.message : String(error);
-      logger(`Remote Chrome ${target} unavailable (${message}); falling back to local Chrome.`);
-      config = { ...config, remoteChrome: null };
+      const fallbackDebugPort = config.debugPort ?? config.remoteChrome.port;
+      logger(
+        `Remote Chrome ${target} unavailable (${message}); falling back to local Chrome on port ${fallbackDebugPort}.`,
+      );
+      config = { ...config, remoteChrome: null, debugPort: fallbackDebugPort };
     }
   }
 
@@ -246,13 +251,39 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   try {
     try {
       const strictTabIsolation = Boolean(manualLogin && reusedChrome);
-      const connection = await connectWithNewTab(chrome.port, logger, undefined, chromeHost, {
-        fallbackToDefault: !strictTabIsolation,
-        retries: strictTabIsolation ? 3 : 0,
-        retryDelayMs: 500,
-      });
-      client = connection.client;
-      isolatedTargetId = connection.targetId ?? null;
+      if (strictTabIsolation) {
+        const reusedConnection = await connectToExistingChatGPTTarget(
+          chrome.port,
+          logger,
+          chromeHost,
+          {
+            validateClient: async (candidateClient, target) => {
+              const probe = await probeChatGPTLogin(candidateClient.Runtime);
+              if (!probe.ok) {
+                return false;
+              }
+              lastTargetId = target.targetId;
+              lastUrl = probe.pageUrl ?? target.url ?? lastUrl;
+              return true;
+            },
+          },
+        );
+        if (reusedConnection) {
+          client = reusedConnection.client;
+          isolatedTargetId = reusedConnection.targetId ?? null;
+          lastTargetId = reusedConnection.targetId ?? lastTargetId;
+          lastUrl = reusedConnection.targetUrl ?? lastUrl;
+        }
+      }
+      if (!client) {
+        const connection = await connectWithNewTab(chrome.port, logger, undefined, chromeHost, {
+          fallbackToDefault: !strictTabIsolation,
+          retries: strictTabIsolation ? 3 : 0,
+          retryDelayMs: 500,
+        });
+        client = connection.client;
+        isolatedTargetId = connection.targetId ?? null;
+      }
     } catch (error) {
       const hint = describeDevtoolsFirewallHint(chromeHost, chrome.port);
       if (hint) {

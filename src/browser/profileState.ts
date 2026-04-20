@@ -15,6 +15,7 @@ const DEVTOOLS_ACTIVE_PORT_RELATIVE_PATHS = [
 
 const CHROME_PID_FILENAME = "chrome.pid";
 const ORACLE_PROFILE_LOCK_FILENAME = "oracle-automation.lock";
+const CHROME_STDERR_LOG_FILENAME = "chrome-err.log";
 
 const execFileAsync = promisify(execFile);
 
@@ -34,6 +35,29 @@ export async function readDevToolsPort(userDataDir: string): Promise<number | nu
     } catch {
       // ignore missing/unreadable candidates
     }
+  }
+  const recoveredPort = await readDevToolsPortFromChromeLog(userDataDir);
+  if (recoveredPort) {
+    await writeDevToolsActivePort(userDataDir, recoveredPort).catch(() => undefined);
+    return recoveredPort;
+  }
+  return null;
+}
+
+async function readDevToolsPortFromChromeLog(userDataDir: string): Promise<number | null> {
+  const logPath = path.join(userDataDir, CHROME_STDERR_LOG_FILENAME);
+  try {
+    const raw = await readFile(logPath, "utf8");
+    const matches = Array.from(
+      raw.matchAll(/DevTools listening on ws:\/\/[^:]+:(\d+)\/devtools\/browser\//g),
+    );
+    const lastPort = matches.at(-1)?.[1];
+    const port = Number.parseInt(lastPort ?? "", 10);
+    if (Number.isFinite(port)) {
+      return port;
+    }
+  } catch {
+    // ignore missing/unreadable log
   }
   return null;
 }

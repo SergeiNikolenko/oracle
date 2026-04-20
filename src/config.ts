@@ -45,6 +45,7 @@ export interface BrowserConfigDefaults {
   /** Time budget for each auto-reattach attempt. */
   autoReattachTimeoutMs?: number;
   cookieSyncWaitMs?: number;
+  cookieSync?: boolean;
   headless?: boolean;
   hideWindow?: boolean;
   keepBrowser?: boolean;
@@ -55,6 +56,8 @@ export interface BrowserConfigDefaults {
   manualLogin?: boolean;
   /** Manual-login profile directory override (also available via ORACLE_BROWSER_PROFILE_DIR). */
   manualLoginProfileDir?: string | null;
+  /** Allow syncing cookies into a persistent manual-login profile. */
+  manualLoginCookieSync?: boolean;
 }
 
 export interface AzureConfig {

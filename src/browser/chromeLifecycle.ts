@@ -211,6 +211,16 @@ export interface RemoteChromeConnection {
 export interface IsolatedTabConnection {
   client: ChromeClient;
   targetId?: string;
+  targetUrl?: string;
+}
+
+interface ExistingTargetInfo {
+  id?: string;
+  targetId?: string;
+  type?: string;
+  url?: string;
+  title?: string;
+  [key: string]: unknown;
 }
 
 interface TargetConnectMessages {
@@ -249,6 +259,102 @@ async function connectToNewTarget(
     const message = error instanceof Error ? error.message : String(error);
     logger(messages.openFailed(message));
   }
+  return null;
+}
+
+function getExistingTargetId(target: ExistingTargetInfo): string | undefined {
+  return typeof target.targetId === "string"
+    ? target.targetId
+    : typeof target.id === "string"
+      ? target.id
+      : undefined;
+}
+
+function scoreExistingChatGPTTarget(target: ExistingTargetInfo): number {
+  if (target.type !== "page") {
+    return -1;
+  }
+  const rawUrl = typeof target.url === "string" ? target.url.trim() : "";
+  const url = rawUrl.toLowerCase();
+  if (!url) {
+    return -1;
+  }
+  const isChatGPT =
+    url.includes("chatgpt.com") || url.includes("chat.openai.com") || url.includes("atlas.openai.com");
+  if (!isChatGPT) {
+    return -1;
+  }
+  if (/\/(auth|login|signin)\b/.test(url)) {
+    return 0;
+  }
+  let score = 10;
+  if (url.includes("/c/")) score += 50;
+  if (url.includes("/project") || url.includes("/g/")) score += 30;
+  if (url.includes("temporary-chat=true")) score -= 15;
+  return score;
+}
+
+export async function connectToExistingChatGPTTarget(
+  port: number,
+  logger: BrowserLogger,
+  host?: string,
+  options?: {
+    validateClient?: (
+      client: ChromeClient,
+      target: { targetId: string; url?: string },
+    ) => Promise<boolean>;
+  },
+): Promise<IsolatedTabConnection | null> {
+  const effectiveHost = host ?? "127.0.0.1";
+  let targets: ExistingTargetInfo[] = [];
+  try {
+    targets = (await CDP.List({ host: effectiveHost, port })) as unknown as ExistingTargetInfo[];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger(`Failed to inspect existing Chrome tabs (${message}); opening a new tab instead.`);
+    return null;
+  }
+
+  const candidates = targets
+    .map((target) => ({ target, targetId: getExistingTargetId(target) }))
+    .filter(
+      (entry): entry is { target: ExistingTargetInfo; targetId: string } =>
+        Boolean(entry.targetId) && scoreExistingChatGPTTarget(entry.target) >= 0,
+    )
+    .sort(
+      (left, right) =>
+        scoreExistingChatGPTTarget(right.target) - scoreExistingChatGPTTarget(left.target),
+    );
+
+  for (const candidate of candidates) {
+    let client: ChromeClient | null = null;
+    try {
+      client = await CDP({ host: effectiveHost, port, target: candidate.targetId });
+      const accepted = await options?.validateClient?.(client, {
+        targetId: candidate.targetId,
+        url: candidate.target.url,
+      });
+      if (accepted === false) {
+        if (typeof client.close === "function") {
+          await client.close().catch(() => undefined);
+        }
+        continue;
+      }
+      logger(`Reusing existing ChatGPT tab (target=${candidate.targetId})`);
+      return {
+        client,
+        targetId: candidate.targetId,
+        targetUrl: candidate.target.url,
+      };
+    } catch (error) {
+      if (client && typeof client.close === "function") {
+        await client.close().catch(() => undefined);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      logger(`Failed to attach to existing ChatGPT tab ${candidate.targetId} (${message})`);
+    }
+  }
+
   return null;
 }
 
